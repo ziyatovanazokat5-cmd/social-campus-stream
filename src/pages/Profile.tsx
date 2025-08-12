@@ -11,6 +11,7 @@ import { Edit, Save, X, User, Mail, Users, Heart, MapPin } from 'lucide-react';
 
 const Profile = () => {
   const { user, token, updateUser } = useAuth();
+  const { id } = useParams<{ id: string }>();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     first_name: '',
@@ -38,6 +39,62 @@ const Profile = () => {
       return `http://localhost:9000/${url.slice(2)}`;
     }
     return url?.startsWith('http') ? url : `http://localhost:9000/${url}`;
+  };
+
+  const fetchProfile = async (userId?: string) => {
+    setIsLoading(true);
+    try {
+      const endpoint = userId ? `/api/users/${userId}` : '/api/users/profile';
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setProfileData(data.data);
+        if (data.data.likes) {
+          const likedIds = data.data.likes.map((like: any) => like.postId || like.post_id).filter(Boolean);
+          setLikedPostIds(likedIds);
+        }
+      } else {
+        toast({
+          title: "Failed to load profile",
+          description: data.message || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to load profile data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserPosts = async (userId?: string) => {
+    setIsLoadingPosts(true);
+    try {
+      const targetUserId = userId || user?.id;
+      const response = await fetch(`/api/posts?userId=${targetUserId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setUserPosts(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user posts:', error);
+    } finally {
+      setIsLoadingPosts(false);
+    }
   };
 
   const handleSave = async () => {

@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import PostCard from '@/components/posts/PostCard';
+import PostModal from '@/components/modals/PostModal';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, RefreshCw, Send, Image, Video } from 'lucide-react';
 
 interface Post {
@@ -44,6 +46,7 @@ interface NewsItem {
 
 const Home = () => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<number[]>([]);
@@ -196,14 +199,24 @@ const Home = () => {
     }
   };
 
+  const [currentModalPost, setCurrentModalPost] = useState<Post | null>(null);
+
   const handleComment = (postId: number) => {
-    // For now, just open the post - you can implement a comment modal later
-    console.log('Open comments for post:', postId);
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      setCurrentModalPost(post);
+    }
   };
 
   const handleOpenPost = (postId: number) => {
-    // Navigate to individual post view or open modal
-    console.log('Open post:', postId);
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      setCurrentModalPost(post);
+    }
+  };
+
+  const handleNavigateToProfile = (userId: number) => {
+    navigate(`/profile/${userId}`);
   };
 
   if (isLoading) {
@@ -324,6 +337,7 @@ const Home = () => {
                     onLike={handleLike}
                     onComment={handleComment}
                     onOpenPost={handleOpenPost}
+                    onNavigateToProfile={handleNavigateToProfile}
                   />
                 ))
               ) : (
@@ -382,8 +396,19 @@ const Home = () => {
                 </div>
               </CardContent>
             </Card>
+            </div>
           </div>
         </div>
+
+        {/* Post Modal */}
+        <PostModal
+          post={currentModalPost}
+          isOpen={!!currentModalPost}
+          onClose={() => setCurrentModalPost(null)}
+          likedPostIds={likedPostIds}
+          onLike={handleLike}
+          onNavigateToProfile={handleNavigateToProfile}
+        />
       </div>
     </div>
   );

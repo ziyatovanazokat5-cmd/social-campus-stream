@@ -40,6 +40,7 @@ interface PostCardProps {
   onLike: (postId: number) => void;
   onComment: (postId: number) => void;
   onOpenPost: (postId: number) => void;
+  onNavigateToProfile?: (userId: number) => void;
 }
 
 const PostCard: React.FC<PostCardProps> = ({ 
@@ -48,7 +49,8 @@ const PostCard: React.FC<PostCardProps> = ({
   likedPostIds, 
   onLike, 
   onComment, 
-  onOpenPost 
+  onOpenPost,
+  onNavigateToProfile 
 }) => {
   const [imageError, setImageError] = useState<{[key: string]: boolean}>({});
   
@@ -69,7 +71,10 @@ const PostCard: React.FC<PostCardProps> = ({
       <CardContent className="p-6 space-y-4">
         {/* Post Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div 
+            className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => onNavigateToProfile?.(post.author.id)}
+          >
             <Avatar className="w-12 h-12 ring-2 ring-primary/20">
               <AvatarImage 
                 src={normalizeUrl(post.author.profilePhoto.url)} 
@@ -80,7 +85,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold text-foreground">
+              <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
                 {post.author.first_name} {post.author.second_name}
               </h3>
               <p className="text-sm text-muted-foreground">
