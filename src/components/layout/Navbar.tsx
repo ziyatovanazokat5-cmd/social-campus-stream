@@ -11,7 +11,8 @@ import {
   Settings, 
   Shield,
   Menu,
-  X
+  X,
+  Users
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -107,6 +108,14 @@ const Navbar = () => {
               Activities
             </Button>
             <Button 
+              variant={isActive('/anonymous') ? 'hero' : 'ghost'} 
+              size="sm"
+              onClick={() => navigate('/anonymous')}
+              className="transition-all duration-300"
+            >
+              Anonymous
+            </Button>
+            <Button 
               variant={isActive('/chat') ? 'hero' : 'ghost'} 
               size="sm"
               onClick={() => navigate('/chat')}
@@ -196,6 +205,13 @@ const Navbar = () => {
               >
                 <Activity className="w-4 h-4 mr-2" />
                 Activities
+              </Button>
+              <Button 
+                variant={isActive('/anonymous') ? 'hero' : 'ghost'} 
+                onClick={() => {navigate('/anonymous'); setShowMobileMenu(false);}}
+                className="justify-start"
+              >
+                Anonymous
               </Button>
               <Button 
                 variant={isActive('/chat') ? 'hero' : 'ghost'} 

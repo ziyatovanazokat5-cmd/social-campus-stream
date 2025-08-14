@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +8,45 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Edit, Save, X, User, Mail, Users, Heart, MapPin } from 'lucide-react';
+import { Edit, Save, X, User, Users, Heart, Loader2, ArrowLeft } from 'lucide-react';
+import PostCard from '@/components/posts/PostCard';
+import PostModal from '@/components/modals/PostModal';
+
+interface UserProfile {
+  id: string;
+  first_name: string;
+  second_name: string;
+  third_name?: string;
+  bio: string;
+  username: string;
+  group: string;
+  profilePhoto: { url: string } | null;
+  role: string;
+  subscriptionsSent: Array<{ id: number }>;
+  subscriptionsReceived: Array<{ id: number }>;
+  posts: Array<{
+    id: number;
+    content: string;
+    views: number;
+    createdAt: string;
+    likes: Array<{
+      id: number;
+      user: {
+        id: string;
+        first_name: string;
+        second_name: string;
+        username: string;
+        profilePhoto: { url: string } | null;
+      };
+    }>;
+  }>;
+}
 
 const Profile = () => {
   const { user, token, updateUser } = useAuth();
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     first_name: '',
@@ -21,9 +56,18 @@ const Profile = () => {
     group: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [likedPostIds, setLikedPostIds] = useState<number[]>([]);
+  const [currentModalPost, setCurrentModalPost] = useState<any>(null);
+
+  const isOwnProfile = !id || id === user?.id;
+  const displayUser = isOwnProfile ? user : profileData;
 
   useEffect(() => {
-    if (user) {
+    if (id && id !== user?.id) {
+      fetchProfile(id);
+    } else if (user) {
+      setProfileData(user as any);
       setEditData({
         first_name: user.first_name || '',
         second_name: user.second_name || '',
@@ -32,20 +76,20 @@ const Profile = () => {
         group: user.group || ''
       });
     }
-  }, [user]);
+  }, [id, user]);
 
   const normalizeUrl = (url: string) => {
-    if (url?.startsWith('./')) {
+    if (!url) return '';
+    if (url.startsWith('./')) {
       return `http://localhost:9000/${url.slice(2)}`;
     }
-    return url?.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
   };
 
-  const fetchProfile = async (userId?: string) => {
+  const fetchProfile = async (userId: string) => {
     setIsLoading(true);
     try {
-      const endpoint = userId ? `/api/users/${userId}` : '/api/users/profile';
-      const response = await fetch(endpoint, {
+      const response = await fetch(`http://localhost:9000/users/one/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -76,31 +120,10 @@ const Profile = () => {
     }
   };
 
-  const fetchUserPosts = async (userId?: string) => {
-    setIsLoadingPosts(true);
-    try {
-      const targetUserId = userId || user?.id;
-      const response = await fetch(`/api/posts?userId=${targetUserId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setUserPosts(data.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch user posts:', error);
-    } finally {
-      setIsLoadingPosts(false);
-    }
-  };
-
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/users/update', {
+      const response = await fetch('http://localhost:9000/users/update', {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -112,7 +135,7 @@ const Profile = () => {
       const data = await response.json();
       if (data.success) {
         // Fetch updated profile
-        const profileResponse = await fetch('/api/users/profile', {
+        const profileResponse = await fetch('http://localhost:9000/users/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -163,12 +186,86 @@ const Profile = () => {
     });
   };
 
-  if (!user) {
+  const handleLike = async (postId: number) => {
+    try {
+      const isCurrentlyLiked = likedPostIds.includes(postId);
+      
+      // Optimistic update
+      if (isCurrentlyLiked) {
+        setLikedPostIds(prev => prev.filter(id => id !== postId));
+      } else {
+        setLikedPostIds(prev => [...prev, postId]);
+      }
+
+      const response = await fetch(`http://localhost:9000/posts/${postId}/like`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        // Revert optimistic update on failure
+        if (isCurrentlyLiked) {
+          setLikedPostIds(prev => [...prev, postId]);
+        } else {
+          setLikedPostIds(prev => prev.filter(id => id !== postId));
+        }
+        toast({
+          title: "Failed to update like",
+          description: data.message || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      const isCurrentlyLiked = likedPostIds.includes(postId);
+      if (isCurrentlyLiked) {
+        setLikedPostIds(prev => [...prev, postId]);
+      } else {
+        setLikedPostIds(prev => prev.filter(id => id !== postId));
+      }
+    }
+  };
+
+  const handleComment = (postId: number) => {
+    const post = profileData?.posts?.find(p => p.id === postId);
+    if (post) {
+      setCurrentModalPost(post);
+    }
+  };
+
+  const handleOpenPost = (postId: number) => {
+    const post = profileData?.posts?.find(p => p.id === postId);
+    if (post) {
+      setCurrentModalPost(post);
+    }
+  };
+
+  const handleNavigateToProfile = (userId: number | string) => {
+    if (userId !== user?.id) {
+      navigate(`/profile/${userId}`);
+    }
+  };
+
+  if (isLoading && !displayUser) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!displayUser) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
         <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm">
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Please log in to view your profile.</p>
+            <p className="text-muted-foreground">Profile not found.</p>
           </CardContent>
         </Card>
       </div>
@@ -179,6 +276,18 @@ const Profile = () => {
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          {/* Back Button */}
+          {!isOwnProfile && (
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="mb-6"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          )}
+
           {/* Profile Header */}
           <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm mb-8">
             <CardContent className="p-8">
@@ -187,11 +296,11 @@ const Profile = () => {
                 <div className="flex-shrink-0">
                   <Avatar className="w-32 h-32 ring-4 ring-primary/20">
                     <AvatarImage 
-                      src={user.profilePhoto?.url ? normalizeUrl(user.profilePhoto.url) : ''} 
-                      alt={user.username}
+                      src={displayUser.profilePhoto?.url ? normalizeUrl(displayUser.profilePhoto.url) : ''} 
+                      alt={displayUser.username}
                     />
                     <AvatarFallback className="bg-gradient-primary text-primary-foreground text-3xl font-bold">
-                      {user.first_name[0]}{user.second_name[0]}
+                      {displayUser.first_name?.[0]}{displayUser.second_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -201,61 +310,67 @@ const Profile = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h1 className="text-3xl font-bold text-foreground">
-                        {user.first_name} {user.second_name} {user.third_name}
+                        {displayUser.first_name} {displayUser.second_name} {displayUser.third_name}
                       </h1>
-                      <p className="text-xl text-muted-foreground">@{user.username}</p>
-                      {user.role && (
+                      <p className="text-xl text-muted-foreground">@{displayUser.username}</p>
+                      {displayUser.role && (
                         <span className="inline-block px-3 py-1 mt-2 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          {displayUser.role.charAt(0).toUpperCase() + displayUser.role.slice(1)}
                         </span>
                       )}
                     </div>
                     
-                    <div className="flex space-x-2">
-                      {!isEditing ? (
-                        <Button
-                          variant="hero"
-                          onClick={() => setIsEditing(true)}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit Profile
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            variant="ghost"
-                            onClick={handleCancel}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Cancel
-                          </Button>
+                    {isOwnProfile && (
+                      <div className="flex space-x-2">
+                        {!isEditing ? (
                           <Button
                             variant="hero"
-                            onClick={handleSave}
-                            disabled={isLoading}
+                            onClick={() => setIsEditing(true)}
                           >
-                            <Save className="w-4 h-4 mr-2" />
-                            Save
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Profile
                           </Button>
-                        </>
-                      )}
-                    </div>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              onClick={handleCancel}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="hero"
+                              onClick={handleSave}
+                              disabled={isLoading}
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <Heart className="w-4 h-4" />
-                      <span className="text-sm">Liked {user.likes?.length || 0} posts</span>
+                      <span className="text-sm">
+                        {(displayUser as any).subscriptionsReceived?.length || 0} Subscribers
+                      </span>
                     </div>
-                    {user.group && (
-                      <div className="flex items-center space-x-2 text-muted-foreground">
-                        <Users className="w-4 h-4" />
-                        <span className="text-sm">{user.group}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">
+                        {(displayUser as any).subscriptionsSent?.length || 0} Following
+                      </span>
+                    </div>
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <User className="w-4 h-4" />
-                      <span className="text-sm">Campus Student</span>
+                      <span className="text-sm">
+                        {(displayUser as any).posts?.length || 0} Posts
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -264,14 +379,14 @@ const Profile = () => {
           </Card>
 
           {/* Profile Details */}
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
             {/* Personal Information */}
             <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {isEditing ? (
+                {isEditing && isOwnProfile ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -337,26 +452,26 @@ const Profile = () => {
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-2">Full Name</h3>
                       <p className="text-foreground">
-                        {user.first_name} {user.second_name} {user.third_name}
+                        {displayUser.first_name} {displayUser.second_name} {displayUser.third_name}
                       </p>
                     </div>
 
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-2">Username</h3>
-                      <p className="text-foreground">@{user.username}</p>
+                      <p className="text-foreground">@{displayUser.username}</p>
                     </div>
 
-                    {user.group && (
+                    {displayUser.group && (
                       <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Study Group</h3>
-                        <p className="text-foreground">{user.group}</p>
+                        <p className="text-foreground">{displayUser.group}</p>
                       </div>
                     )}
 
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-2">Bio</h3>
                       <p className="text-foreground">
-                        {user.bio || "No bio provided yet."}
+                        {displayUser.bio || "No bio provided yet."}
                       </p>
                     </div>
                   </>
@@ -377,12 +492,12 @@ const Profile = () => {
                         <Heart className="w-5 h-5 text-red-500" />
                       </div>
                       <div>
-                        <p className="font-medium">Posts Liked</p>
-                        <p className="text-sm text-muted-foreground">Total interactions</p>
+                        <p className="font-medium">Subscribers</p>
+                        <p className="text-sm text-muted-foreground">People following you</p>
                       </div>
                     </div>
                     <span className="text-2xl font-bold text-red-500">
-                      {user.likes?.length || 0}
+                      {(displayUser as any).subscriptionsReceived?.length || 0}
                     </span>
                   </div>
 
@@ -392,12 +507,12 @@ const Profile = () => {
                         <Users className="w-5 h-5 text-blue-500" />
                       </div>
                       <div>
-                        <p className="font-medium">Group Member</p>
-                        <p className="text-sm text-muted-foreground">Study group participation</p>
+                        <p className="font-medium">Following</p>
+                        <p className="text-sm text-muted-foreground">People you follow</p>
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-blue-500">
-                      {user.group ? 'Active' : 'None'}
+                    <span className="text-2xl font-bold text-blue-500">
+                      {(displayUser as any).subscriptionsSent?.length || 0}
                     </span>
                   </div>
 
@@ -407,16 +522,65 @@ const Profile = () => {
                         <User className="w-5 h-5 text-green-500" />
                       </div>
                       <div>
-                        <p className="font-medium">Account Status</p>
-                        <p className="text-sm text-muted-foreground">Campus community member</p>
+                        <p className="font-medium">Posts</p>
+                        <p className="text-sm text-muted-foreground">Total posts shared</p>
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-green-500">Active</span>
+                    <span className="text-2xl font-bold text-green-500">
+                      {(displayUser as any).posts?.length || 0}
+                    </span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* User Posts */}
+          {(displayUser as any).posts && (displayUser as any).posts.length > 0 && (
+            <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>
+                  {isOwnProfile ? 'My Posts' : `${displayUser.first_name}'s Posts`}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {(displayUser as any).posts.map((post: any) => (
+                    <PostCard
+                      key={post.id}
+                      post={{
+                        ...post,
+                        author: {
+                          id: displayUser.id,
+                          first_name: displayUser.first_name,
+                          second_name: displayUser.second_name,
+                          username: displayUser.username,
+                          profilePhoto: displayUser.profilePhoto
+                        },
+                        comments: []
+                      }}
+                      currentUserId={user?.id || ''}
+                      likedPostIds={likedPostIds}
+                      onLike={handleLike}
+                      onComment={handleComment}
+                      onOpenPost={handleOpenPost}
+                      onNavigateToProfile={handleNavigateToProfile}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Post Modal */}
+          <PostModal
+            post={currentModalPost}
+            isOpen={!!currentModalPost}
+            onClose={() => setCurrentModalPost(null)}
+            likedPostIds={likedPostIds}
+            onLike={handleLike}
+            onNavigateToProfile={handleNavigateToProfile}
+          />
         </div>
       </div>
     </div>

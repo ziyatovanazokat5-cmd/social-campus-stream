@@ -68,8 +68,8 @@ const Home = () => {
 
       // Fetch posts, news, and user profile in parallel
       const [postsResponse, newsResponse] = await Promise.all([
-        fetch('/api/posts', { headers }),
-        fetch('/api/news', { headers }),
+        fetch('http://localhost:9000/posts', { headers }),
+        fetch('http://localhost:9000/news', { headers }),
       ]);
 
       const postsData = await postsResponse.json();
@@ -117,7 +117,7 @@ const Home = () => {
     
     setIsPosting(true);
     try {
-      const response = await fetch('/api/posts', {
+      const response = await fetch('http://localhost:9000/posts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -164,7 +164,7 @@ const Home = () => {
         setLikedPostIds(prev => [...prev, postId]);
       }
 
-      const response = await fetch(`/api/posts/${postId}/like`, {
+      const response = await fetch(`http://localhost:9000/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -396,20 +396,19 @@ const Home = () => {
                 </div>
               </CardContent>
             </Card>
-            </div>
           </div>
         </div>
-
-        {/* Post Modal */}
-        <PostModal
-          post={currentModalPost}
-          isOpen={!!currentModalPost}
-          onClose={() => setCurrentModalPost(null)}
-          likedPostIds={likedPostIds}
-          onLike={handleLike}
-          onNavigateToProfile={handleNavigateToProfile}
-        />
       </div>
+
+      {/* Post Modal */}
+      <PostModal
+        post={currentModalPost}
+        isOpen={!!currentModalPost}
+        onClose={() => setCurrentModalPost(null)}
+        likedPostIds={likedPostIds}
+        onLike={handleLike}
+        onNavigateToProfile={handleNavigateToProfile}
+      />
     </div>
   );
 };

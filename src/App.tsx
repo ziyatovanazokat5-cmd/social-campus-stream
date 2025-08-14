@@ -16,6 +16,8 @@ import UserSearch from "@/pages/UserSearch";
 import Settings from "@/pages/Settings";
 import AdminPanel from "@/pages/AdminPanel";
 import AdminActivities from "@/pages/AdminActivities";
+import Anonymous from "@/pages/Anonymous";
+import AdminAnonymous from "@/pages/AdminAnonymous";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +55,8 @@ const AppContent = () => (
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
       <Route path="/admin/activities" element={<ProtectedRoute><AdminActivities /></ProtectedRoute>} />
+      <Route path="/anonymous" element={<ProtectedRoute><Anonymous /></ProtectedRoute>} />
+      <Route path="/admin/anonymous" element={<ProtectedRoute><AdminAnonymous /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </>
