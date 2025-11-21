@@ -1,25 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
-import { 
-  Users, 
-  Shield, 
-  Newspaper, 
-  Plus, 
-  Trash2, 
-  Edit, 
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import {
+  Users,
+  Shield,
+  Newspaper,
+  Plus,
+  Trash2,
+  Edit,
   Ban,
   Loader2,
   UserCheck,
-  Eye
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+  Eye,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Admin {
   id: number;
@@ -27,7 +34,7 @@ interface Admin {
   first_name: string;
   second_name: string;
   role: string;
-  profilePhoto: { url: string };
+  profilePhoto?: { url: string };
 }
 
 interface User {
@@ -37,14 +44,18 @@ interface User {
   username: string;
   bio: string;
   group: string;
-  profilePhoto: { url: string };
+  profilePhoto?: { url: string };
 }
 
 interface NewsItem {
   id: number;
   title: string;
-  content: string;
+  text: string;
   createdAt?: string;
+  media?: Array<{
+    type: "image" | "video";
+    url: string;
+  }>;
 }
 
 const AdminPanel = () => {
@@ -55,29 +66,36 @@ const AdminPanel = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateNews, setShowCreateNews] = useState(false);
-  const [newNewsTitle, setNewNewsTitle] = useState('');
-  const [newNewsContent, setNewNewsContent] = useState('');
+  const [newNewsTitle, setNewNewsTitle] = useState("");
+  const [newNewsContent, setNewNewsContent] = useState("");
+  const [newNewsFiles, setNewNewsFiles] = useState<FileList | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [imageError, setImageError] = useState<{ [key: string]: boolean }>({});
 
-  const normalizeUrl = (url: string) => {
-    if (url?.startsWith('./')) {
+  const normalizeUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith("./")) {
       return `http://localhost:9000/${url.slice(2)}`;
     }
-    return url?.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith("http") ? url : `http://localhost:9000/${url}`;
+  };
+
+  const handleImageError = (url: string) => {
+    setImageError((prev) => ({ ...prev, [url]: true }));
   };
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
       const [adminsRes, usersRes, newsRes] = await Promise.all([
-        fetch('/api/admins', {
-          headers: { 'Authorization': `Bearer ${token}` },
+        fetch("http://localhost:9000/admin", {
+          headers: { Authorization: `${token}` },
         }),
-        fetch('/api/users', {
-          headers: { 'Authorization': `Bearer ${token}` },
+        fetch("http://localhost:9000/users", {
+          headers: { Authorization: `${token}` },
         }),
-        fetch('/api/news', {
-          headers: { 'Authorization': `Bearer ${token}` },
+        fetch("http://localhost:9000/news", {
+          headers: { Authorization: `${token}` },
         }),
       ]);
 
@@ -102,8 +120,8 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
-    if (user?.role !== 'admin') {
-      navigate('/home');
+    if (user?.role !== "admin") {
+      navigate("/home");
       return;
     }
     if (token) {
@@ -116,23 +134,29 @@ const AdminPanel = () => {
 
     setIsCreating(true);
     try {
-      const response = await fetch('/api/news', {
-        method: 'POST',
+      const formData = new FormData();
+      formData.append("title", newNewsTitle);
+      formData.append("text", newNewsContent);
+      if (newNewsFiles) {
+        Array.from(newNewsFiles).forEach((file) => {
+          formData.append("media", file);
+        });
+      }
+
+      const response = await fetch("http://localhost:9000/news", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `${token}`,
         },
-        body: JSON.stringify({
-          title: newNewsTitle,
-          content: newNewsContent,
-        }),
+        body: formData,
       });
 
       const data = await response.json();
       if (data.success) {
-        setNews(prev => [data.data, ...prev]);
-        setNewNewsTitle('');
-        setNewNewsContent('');
+        setNews((prev) => [data.data, ...prev]);
+        setNewNewsTitle("");
+        setNewNewsContent("");
+        setNewNewsFiles(null);
         setShowCreateNews(false);
         toast({
           title: "News created!",
@@ -157,19 +181,19 @@ const AdminPanel = () => {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm("Are you sure you want to delete this user?")) return;
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
+      const response = await fetch(`http://localhost:9000/users/${userId}`, {
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `${token}`,
         },
       });
 
       const data = await response.json();
       if (data.success) {
-        setUsers(prev => prev.filter(u => u.id !== userId));
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
         toast({
           title: "User deleted",
           description: "User has been removed successfully.",
@@ -191,19 +215,19 @@ const AdminPanel = () => {
   };
 
   const handleDeleteNews = async (newsId: number) => {
-    if (!confirm('Are you sure you want to delete this news article?')) return;
+    if (!confirm("Are you sure you want to delete this news article?")) return;
 
     try {
-      const response = await fetch(`/api/news/${newsId}`, {
-        method: 'DELETE',
+      const response = await fetch(`http://localhost:9000/news/${newsId}`, {
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `${token}`,
         },
       });
 
       const data = await response.json();
       if (data.success) {
-        setNews(prev => prev.filter(n => n.id !== newsId));
+        setNews((prev) => prev.filter((n) => n.id !== newsId));
         toast({
           title: "News deleted",
           description: "News article has been removed successfully.",
@@ -261,19 +285,29 @@ const AdminPanel = () => {
             <CardContent className="space-y-3 max-h-96 overflow-y-auto">
               {admins.length > 0 ? (
                 admins.map((admin) => (
-                  <div key={admin.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div
+                    key={admin.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  >
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={normalizeUrl(admin.profilePhoto.url)} />
+                        {admin.profilePhoto?.url ? (
+                          <AvatarImage
+                            src={normalizeUrl(admin.profilePhoto.url)}
+                          />
+                        ) : null}
                         <AvatarFallback className="text-xs">
-                          {admin.first_name[0]}{admin.second_name[0]}
+                          {admin.first_name[0]}
+                          {admin.second_name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium text-sm">
                           {admin.first_name} {admin.second_name}
                         </p>
-                        <p className="text-xs text-muted-foreground">@{admin.username}</p>
+                        <p className="text-xs text-muted-foreground">
+                          @{admin.username}
+                        </p>
                       </div>
                     </div>
                     <div className="text-xs px-2 py-1 bg-primary/20 text-primary rounded">
@@ -282,12 +316,13 @@ const AdminPanel = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center py-4">No admins found</p>
+                <p className="text-muted-foreground text-center py-4">
+                  No admins found
+                </p>
               )}
             </CardContent>
           </Card>
 
-          {/* Users Section */}
           <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -298,19 +333,29 @@ const AdminPanel = () => {
             <CardContent className="space-y-3 max-h-96 overflow-y-auto">
               {users.length > 0 ? (
                 users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  >
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={normalizeUrl(user.profilePhoto.url)} />
+                        {user.profilePhoto?.url ? (
+                          <AvatarImage
+                            src={normalizeUrl(user.profilePhoto.url)}
+                          />
+                        ) : null}
                         <AvatarFallback className="text-xs">
-                          {user.first_name[0]}{user.second_name[0]}
+                          {user.first_name[0]}
+                          {user.second_name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium text-sm">
                           {user.first_name} {user.second_name}
                         </p>
-                        <p className="text-xs text-muted-foreground">@{user.username}</p>
+                        <p className="text-xs text-muted-foreground">
+                          @{user.username}
+                        </p>
                         {user.group && (
                           <p className="text-xs text-primary">{user.group}</p>
                         )}
@@ -337,12 +382,13 @@ const AdminPanel = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center py-4">No users found</p>
+                <p className="text-muted-foreground text-center py-4">
+                  No users found
+                </p>
               )}
             </CardContent>
           </Card>
 
-          {/* News Section */}
           <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -379,6 +425,18 @@ const AdminPanel = () => {
                           rows={4}
                         />
                       </div>
+                      <div>
+                        <label className="text-sm font-medium">
+                          Upload Media (Optional)
+                        </label>
+                        <Input
+                          type="file"
+                          accept="image/*,video/*"
+                          multiple
+                          onChange={(e) => setNewNewsFiles(e.target.files)}
+                          className="transition-all duration-300 focus:shadow-md"
+                        />
+                      </div>
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
@@ -388,7 +446,11 @@ const AdminPanel = () => {
                         </Button>
                         <Button
                           onClick={handleCreateNews}
-                          disabled={!newNewsTitle.trim() || !newNewsContent.trim() || isCreating}
+                          disabled={
+                            !newNewsTitle.trim() ||
+                            !newNewsContent.trim() ||
+                            isCreating
+                          }
                         >
                           {isCreating ? (
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -413,8 +475,40 @@ const AdminPanel = () => {
                           {item.title}
                         </h4>
                         <p className="text-xs text-muted-foreground line-clamp-2">
-                          {item.content}
+                          {item.text}
                         </p>
+                        {item.media?.length ? (
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            {item.media.map((media, index) => (
+                              <div
+                                key={index}
+                                className="relative rounded-lg overflow-hidden"
+                              >
+                                {media.type === "image" &&
+                                !imageError[media.url] ? (
+                                  <img
+                                    src={`http://localhost:9000/uploads/news-media/${media.url}`}
+                                    alt="News media"
+                                    className="w-full h-24 object-cover hover:scale-105 transition-transform duration-300"
+                                    onError={() => handleImageError(media.url)}
+                                  />
+                                ) : media.type === "video" ? (
+                                  <video
+                                    src={normalizeUrl(media.url)}
+                                    className="w-full h-24 object-cover"
+                                    controls
+                                  />
+                                ) : (
+                                  <div className="w-full h-24 bg-muted flex items-center justify-center">
+                                    <span className="text-muted-foreground">
+                                      Media unavailable
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                       <Button
                         variant="ghost"
@@ -428,39 +522,49 @@ const AdminPanel = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center py-4">No news articles</p>
+                <p className="text-muted-foreground text-center py-4">
+                  No news articles
+                </p>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Quick Actions */}
         <div className="mt-8 grid md:grid-cols-3 gap-4">
           <Button
             variant="outline"
             className="h-16 flex flex-col space-y-2"
-            onClick={() => navigate('/admin/activities')}
+            onClick={() => navigate("/admin/activities")}
           >
             <Plus className="w-6 h-6" />
             <span>Manage Activities</span>
           </Button>
-          
+
           <Button
             variant="outline"
             className="h-16 flex flex-col space-y-2"
-            onClick={() => navigate('/user-search')}
+            onClick={() => navigate("/user-search")}
           >
             <Users className="w-6 h-6" />
             <span>Browse Users</span>
           </Button>
-          
+
           <Button
             variant="outline"
             className="h-16 flex flex-col space-y-2"
-            onClick={() => navigate('/home')}
+            onClick={() => navigate("/home")}
           >
             <Eye className="w-6 h-6" />
             <span>View Campus</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-16 flex flex-col space-y-2"
+            onClick={() => navigate("/admin/anonymous")}
+          >
+            <Eye className="w-6 h-6" />
+            <span>View Anonymous</span>
           </Button>
         </div>
       </div>

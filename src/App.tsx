@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
 import Landing from "@/pages/Landing";
@@ -19,12 +19,15 @@ import AdminActivities from "@/pages/AdminActivities";
 import Anonymous from "@/pages/Anonymous";
 import AdminAnonymous from "@/pages/AdminAnonymous";
 import NotFound from "./pages/NotFound";
+import Account from "./pages/Account";
+import AdminLogin from "./pages/AdminLogin";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { token, isLoading } = useAuth();
-  
+const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
+  const { token, user, isLoading } = useAuth();
+  const location = useLocation();
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
@@ -35,8 +38,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const AppContent = () => (
@@ -48,15 +59,16 @@ const AppContent = () => (
       <Route path="/register" element={<Register />} />
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/profile/:id" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/activities" element={<ProtectedRoute><Activities /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
       <Route path="/user-search" element={<ProtectedRoute><UserSearch /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-      <Route path="/admin/activities" element={<ProtectedRoute><AdminActivities /></ProtectedRoute>} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
+      <Route path="/admin/activities" element={<ProtectedRoute requiredRole="admin"><AdminActivities /></ProtectedRoute>} />
       <Route path="/anonymous" element={<ProtectedRoute><Anonymous /></ProtectedRoute>} />
-      <Route path="/admin/anonymous" element={<ProtectedRoute><AdminAnonymous /></ProtectedRoute>} />
+      <Route path="/admin/anonymous" element={<ProtectedRoute requiredRole="admin"><AdminAnonymous /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </>

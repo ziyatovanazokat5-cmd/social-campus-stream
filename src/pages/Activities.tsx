@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,9 +28,9 @@ const Activities = () => {
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch('/api/activities', {
+      const response = await fetch('http://localhost:9000/activities', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 
@@ -64,10 +65,10 @@ const Activities = () => {
     setRegistering(prev => ({ ...prev, [activityId]: true }));
     
     try {
-      const response = await fetch(`/api/activities/${activityId}/register`, {
+      const response = await fetch(`http://localhost:9000/activities/${activityId}/register`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 
@@ -129,7 +130,7 @@ const Activities = () => {
                 {activity.photos && activity.photos.length > 0 && (
                   <div className="relative h-48 overflow-hidden rounded-t-lg">
                     <img
-                      src={normalizeUrl(activity.photos[0])}
+                      src={`http://localhost:9000/uploads/activities/${activity.photos[0]}`}
                       alt={activity.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {

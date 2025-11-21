@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -6,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Search, Users, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface User {
   id: number;
@@ -15,7 +15,7 @@ interface User {
   username: string;
   bio: string;
   group: string;
-  profilePhoto: { url: string };
+  profilePhoto: { url: string } | null;
 }
 
 const UserSearch = () => {
@@ -26,18 +26,19 @@ const UserSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const normalizeUrl = (url: string) => {
-    if (url?.startsWith('./')) {
+  const normalizeUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('./')) {
       return `http://localhost:9000/${url.slice(2)}`;
     }
-    return url?.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
   };
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch('http://localhost:9000/users', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 
@@ -82,8 +83,7 @@ const UserSearch = () => {
           user.second_name.toLowerCase().includes(searchLower) ||
           user.third_name?.toLowerCase().includes(searchLower) ||
           user.username.toLowerCase().includes(searchLower) ||
-          user.bio.toLowerCase().includes(searchLower) ||
-          user.group.toLowerCase().includes(searchLower)
+          user.bio.toLowerCase().includes(searchLower)
         );
       });
       setFilteredUsers(filtered);
@@ -142,7 +142,7 @@ const UserSearch = () => {
               >
                 <CardContent className="p-6 text-center space-y-4">
                   <Avatar className="w-20 h-20 mx-auto ring-4 ring-primary/20">
-                    <AvatarImage src={normalizeUrl(user.profilePhoto.url)} />
+                    <AvatarImage src={normalizeUrl(user.profilePhoto?.url)} />
                     <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xl">
                       {user.first_name[0]}{user.second_name[0]}
                     </AvatarFallback>

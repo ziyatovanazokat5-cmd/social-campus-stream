@@ -91,7 +91,7 @@ const Profile = () => {
     try {
       const response = await fetch(`http://localhost:9000/users/one/${userId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 
@@ -126,7 +126,7 @@ const Profile = () => {
       const response = await fetch('http://localhost:9000/users/update', {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editData),
@@ -137,7 +137,7 @@ const Profile = () => {
         // Fetch updated profile
         const profileResponse = await fetch('http://localhost:9000/users/profile', {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `${token}`,
           },
         });
         const profileData = await profileResponse.json();
@@ -200,7 +200,7 @@ const Profile = () => {
       const response = await fetch(`http://localhost:9000/posts/${postId}/like`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 

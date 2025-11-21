@@ -1,23 +1,25 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { 
-  Loader2, 
-  Plus, 
-  RefreshCw, 
-  Send, 
-  Image as ImageIcon, 
-  Video, 
+import {
+  Loader2,
+  Plus,
+  RefreshCw,
+  Send,
+  Image as ImageIcon,
+  Video,
   Heart,
   MessageCircle,
   Eye,
   X,
-  Paperclip
+  Paperclip,
 } from 'lucide-react';
 
 interface AnonymousMessage {
@@ -27,15 +29,14 @@ interface AnonymousMessage {
     type: 'image' | 'video';
     url: string;
   }>;
-  likes: any[];
   comments: Array<{
     id: number;
     text: string;
-    user: {
+    author: {
       id: string;
       username: string;
       first_name: string;
-    };
+    } | null; // Allow null
   }>;
   views: number;
   createdAt: string;
@@ -50,7 +51,9 @@ const Anonymous = () => {
   const [isPosting, setIsPosting] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [likedMessageIds, setLikedMessageIds] = useState<number[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<AnonymousMessage | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   const fetchMessages = async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
@@ -59,7 +62,7 @@ const Anonymous = () => {
     try {
       const response = await fetch('http://localhost:9000/anonymous', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `${token}`,
         },
       });
 
@@ -67,18 +70,52 @@ const Anonymous = () => {
       if (data.success) {
         setMessages(data.data || []);
       } else {
-        console.error('Failed to fetch messages:', data.message);
+        toast({
+          title: 'Failed to fetch messages',
+          description: data.message || 'Please try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
-      console.error('Fetch error:', error);
       toast({
-        title: "Connection Error",
-        description: "Unable to load anonymous messages. Please check your connection.",
-        variant: "destructive",
+        title: 'Connection Error',
+        description: 'Unable to load anonymous messages. Please check your connection.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+    }
+  };
+
+  const fetchSingleMessage = async (id: number) => {
+    try {
+      const response = await fetch(`http://localhost:9000/anonymous/${id}`, {
+        headers: {
+          Authorization: `${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSelectedMessage(data.data);
+        // Update the main messages list to reflect any changes (e.g., new comments)
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === id ? data.data : msg))
+        );
+      } else {
+        toast({
+          title: 'Failed to fetch message',
+          description: data.message || 'Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Connection Error',
+        description: 'Unable to load message details.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -98,21 +135,21 @@ const Anonymous = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setSelectedFiles(prev => [...prev, ...files].slice(0, 10)); // Max 10 files
+    setSelectedFiles((prev) => [...prev, ...files].slice(0, 10)); // Max 10 files
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateMessage = async () => {
     if (!newMessage.trim() && selectedFiles.length === 0) return;
-    
+
     setIsPosting(true);
     try {
       const formData = new FormData();
       formData.append('message', newMessage);
-      
+
       selectedFiles.forEach((file) => {
         formData.append('media', file);
       });
@@ -120,7 +157,7 @@ const Anonymous = () => {
       const response = await fetch('http://localhost:9000/anonymous', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `${token}`,
         },
         body: formData,
       });
@@ -130,71 +167,70 @@ const Anonymous = () => {
         setNewMessage('');
         setSelectedFiles([]);
         setShowCreatePost(false);
-        fetchMessages(false); // Refresh messages
+        fetchMessages(false);
         toast({
-          title: "Anonymous message posted!",
-          description: "Your message has been shared anonymously.",
+          title: 'Anonymous message posted!',
+          description: 'Your message has been shared anonymously.',
         });
       } else {
         toast({
-          title: "Failed to post message",
-          description: data.message || "Please try again.",
-          variant: "destructive",
+          title: 'Failed to post message',
+          description: data.message || 'Please try again.',
+          variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Unable to post message. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Unable to post message. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsPosting(false);
     }
   };
 
-  const handleLike = async (messageId: number) => {
-    try {
-      const isCurrentlyLiked = likedMessageIds.includes(messageId);
-      
-      // Optimistic update
-      if (isCurrentlyLiked) {
-        setLikedMessageIds(prev => prev.filter(id => id !== messageId));
-      } else {
-        setLikedMessageIds(prev => [...prev, messageId]);
-      }
+  const handleOpenMessage = (message: AnonymousMessage) => {
+    setSelectedMessage(message);
+  };
 
-      const response = await fetch(`http://localhost:9000/anonymous/${messageId}/like`, {
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !selectedMessage) return;
+
+    setIsPostingComment(true);
+    try {
+      const response = await fetch(`http://localhost:9000/anonym-comments/${selectedMessage.id}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `${token}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ text: newComment }),
       });
 
       const data = await response.json();
-      if (!data.success) {
-        // Revert optimistic update on failure
-        if (isCurrentlyLiked) {
-          setLikedMessageIds(prev => [...prev, messageId]);
-        } else {
-          setLikedMessageIds(prev => prev.filter(id => id !== messageId));
-        }
+      if (data.success) {
+        setNewComment('');
+        fetchSingleMessage(selectedMessage.id); // Refresh message with new comment
         toast({
-          title: "Failed to update like",
-          description: data.message || "Please try again.",
-          variant: "destructive",
+          title: 'Comment posted!',
+          description: 'Your comment has been added.',
         });
       } else {
-        fetchMessages(false);
+        toast({
+          title: 'Failed to post comment',
+          description: data.message || 'Please try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
-      // Revert optimistic update on error
-      const isCurrentlyLiked = likedMessageIds.includes(messageId);
-      if (isCurrentlyLiked) {
-        setLikedMessageIds(prev => [...prev, messageId]);
-      } else {
-        setLikedMessageIds(prev => prev.filter(id => id !== messageId));
-      }
+      toast({
+        title: 'Error',
+        description: 'Unable to post comment. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPostingComment(false);
     }
   };
 
@@ -217,7 +253,7 @@ const Anonymous = () => {
           <Card className="shadow-card border-0 bg-gradient-hero text-primary-foreground">
             <CardContent className="p-6">
               <h1 className="text-2xl font-bold mb-2">
-                Anonymous Messages 🎭
+                Anonymous Messages
               </h1>
               <p className="text-primary-foreground/80">
                 Share your thoughts anonymously with the campus community
@@ -246,8 +282,6 @@ const Anonymous = () => {
                     className="resize-none border-0 focus-visible:ring-0 text-base"
                     rows={3}
                   />
-                  
-                  {/* File Previews */}
                   {selectedFiles.length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {selectedFiles.map((file, index) => (
@@ -275,7 +309,6 @@ const Anonymous = () => {
                       ))}
                     </div>
                   )}
-
                   <div className="flex items-center justify-between">
                     <div className="flex space-x-2">
                       <label htmlFor="file-upload">
@@ -346,10 +379,13 @@ const Anonymous = () => {
           <div className="space-y-6">
             {messages.length > 0 ? (
               messages.map((message) => (
-                <Card key={message.id} className="shadow-card border-0 bg-card/80 backdrop-blur-sm">
+                <Card
+                  key={message.id}
+                  className="shadow-card border-0 bg-card/80 backdrop-blur-sm cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => handleOpenMessage(message)}
+                >
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {/* Anonymous Header */}
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-10 h-10">
                           <AvatarFallback className="bg-gradient-primary text-primary-foreground">
@@ -363,14 +399,10 @@ const Anonymous = () => {
                           </p>
                         </div>
                       </div>
-
-                      {/* Message Content */}
                       <div className="space-y-3">
                         {message.message && (
                           <p className="text-foreground leading-relaxed">{message.message}</p>
                         )}
-
-                        {/* Media */}
                         {message.media && message.media.length > 0 && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
                             {message.media.map((media, index) => (
@@ -393,31 +425,16 @@ const Anonymous = () => {
                           </div>
                         )}
                       </div>
-
-                      {/* Actions */}
                       <div className="flex items-center justify-between pt-4 border-t border-border">
                         <div className="flex items-center space-x-6">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleLike(message.id)}
-                            className={`space-x-2 ${
-                              likedMessageIds.includes(message.id) ? 'text-red-500' : 'text-muted-foreground'
-                            }`}
+                            className="space-x-2 text-muted-foreground"
                           >
-                            <Heart 
-                              className={`w-4 h-4 ${
-                                likedMessageIds.includes(message.id) ? 'fill-current' : ''
-                              }`} 
-                            />
-                            <span>{message.likes?.length || 0}</span>
-                          </Button>
-
-                          <Button variant="ghost" size="sm" className="space-x-2 text-muted-foreground">
                             <MessageCircle className="w-4 h-4" />
                             <span>{message.comments?.length || 0}</span>
                           </Button>
-
                           <div className="flex items-center space-x-2 text-muted-foreground">
                             <Eye className="w-4 h-4" />
                             <span className="text-sm">{message.views || 0}</span>
@@ -438,6 +455,132 @@ const Anonymous = () => {
               </Card>
             )}
           </div>
+
+          {/* Anonymous Message Modal */}
+          {selectedMessage && (
+            <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
+              <DialogContent className="sm:max-w-[600px] bg-card/80 backdrop-blur-sm shadow-card border-0">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold text-foreground">
+                    Anonymous Message
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                  {/* Message Content */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                          ?
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-foreground">Anonymous</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(selectedMessage.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedMessage.message && (
+                      <p className="text-foreground leading-relaxed">{selectedMessage.message}</p>
+                    )}
+                    {selectedMessage.media && selectedMessage.media.length > 0 && (
+                      <div className="grid grid-cols-1 gap-2">
+                        {selectedMessage.media.map((media, index) => (
+                          <div key={index} className="rounded-lg overflow-hidden">
+                            {media.type === 'image' ? (
+                              <img
+                                src={normalizeUrl(media.url)}
+                                alt="Anonymous media"
+                                className="w-full h-auto object-cover"
+                              />
+                            ) : (
+                              <video
+                                src={normalizeUrl(media.url)}
+                                controls
+                                className="w-full h-auto"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center space-x-6 text-muted-foreground pt-4 border-t border-border">
+                      <span className="flex items-center space-x-2">
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{selectedMessage.comments?.length || 0}</span>
+                      </span>
+                      <span className="flex items-center space-x-2">
+                        <Eye className="w-4 h-4" />
+                        <span>{selectedMessage.views || 0}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Comments Section - FIXED */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground">Comments</h3>
+                    {selectedMessage.comments.length > 0 ? (
+                      <div className="max-h-64 overflow-y-auto space-y-4">
+                        {selectedMessage.comments.map((comment) => {
+                          const author = comment.author;
+                          const displayName = author
+                            ? `${author.first_name || 'User'} (@${author.username || 'unknown'})`
+                            : 'Unknown User';
+                          const avatarLetter = author?.first_name?.[0] || '?';
+
+                          return (
+                            <div key={comment.id} className="flex items-start space-x-3">
+                              <Avatar className="w-8 h-8">
+                                <AvatarFallback className="text-xs">
+                                  {avatarLetter}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">
+                                  {displayName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">{comment.text}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">No comments yet.</p>
+                    )}
+                    <div className="space-y-2">
+                      <Textarea
+                        placeholder="Add a comment..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        className="resize-none border-0 focus-visible:ring-0 text-base"
+                        rows={2}
+                      />
+                      <Button
+                        variant="hero"
+                        onClick={handleAddComment}
+                        disabled={!newComment.trim() || isPostingComment}
+                        className="w-full"
+                      >
+                        {isPostingComment ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Posting...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Post Comment
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
     </div>

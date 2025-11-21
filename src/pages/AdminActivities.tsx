@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,9 +52,9 @@ const AdminActivities = () => {
   const fetchActivities = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/activities', {
+      const response = await fetch('http://localhost:9000/activities', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 
@@ -134,10 +135,10 @@ const AdminActivities = () => {
         formData.append('photos', file);
       });
 
-      const response = await fetch('/api/activities', {
+      const response = await fetch('http://localhost:9000/activities', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
         body: formData,
       });
@@ -177,10 +178,10 @@ const AdminActivities = () => {
     if (!confirm('Are you sure you want to delete this activity?')) return;
 
     try {
-      const response = await fetch(`/api/activities/${activityId}`, {
+      const response = await fetch(`http://localhost:9000/activities/${activityId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 

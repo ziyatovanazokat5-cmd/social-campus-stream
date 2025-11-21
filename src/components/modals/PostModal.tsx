@@ -6,17 +6,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, Eye, Send, Loader2, X } from 'lucide-react';
+import { Heart, MessageCircle, Eye, Send, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Comment {
   id: number;
   text: string;
-  user: {
+  author: {
     id: number;
     username: string;
     first_name: string;
-    profilePhoto?: { url: string };
+    second_name?: string;
+    profilePhoto?: { url: string } | null;
   };
   createdAt?: string;
 }
@@ -28,7 +29,7 @@ interface Post {
     first_name: string;
     second_name: string;
     username: string;
-    profilePhoto: { url: string };
+    profilePhoto: { url: string } | null;
   };
   content: string;
   media: Array<{
@@ -64,6 +65,8 @@ const PostModal: React.FC<PostModalProps> = ({
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
 
   const normalizeUrl = (url: string) => {
     if (url?.startsWith('./')) {
@@ -75,9 +78,9 @@ const PostModal: React.FC<PostModalProps> = ({
   const fetchComments = async (postId: number) => {
     setIsLoadingComments(true);
     try {
-      const response = await fetch(`/api/posts/${postId}`, {
+      const response = await fetch(`http://localhost:9000/posts/${postId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
         },
       });
 
@@ -97,10 +100,10 @@ const PostModal: React.FC<PostModalProps> = ({
 
     setIsPosting(true);
     try {
-      const response = await fetch(`/api/comments/${post.id}`, {
+      const response = await fetch(`http://localhost:9000/comments/${post.id}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ text: newComment }),
@@ -108,14 +111,14 @@ const PostModal: React.FC<PostModalProps> = ({
 
       const data = await response.json();
       if (data.success) {
-        // Optimistically add comment
         const newCommentObj: Comment = {
-          id: Date.now(), // Temporary ID
+          id: Date.now(),
           text: newComment,
-          user: {
+          author: {
             id: parseInt(user?.id || '0'),
             username: user?.username || '',
             first_name: user?.first_name || '',
+            second_name: user?.second_name || '',
             profilePhoto: user?.profilePhoto,
           },
           createdAt: new Date().toISOString(),
@@ -145,6 +148,26 @@ const PostModal: React.FC<PostModalProps> = ({
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    if (isLeftSwipe && post.media.length > 1) {
+      setCurrentMediaIndex((prev) => (prev + 1) % post.media.length);
+    } else if (isRightSwipe && post.media.length > 1) {
+      setCurrentMediaIndex((prev) => (prev - 1 + post.media.length) % post.media.length);
+    }
+  };
+
   useEffect(() => {
     if (post && isOpen) {
       setComments(post.comments || []);
@@ -159,88 +182,106 @@ const PostModal: React.FC<PostModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-card/95 backdrop-blur-lg border-0 shadow-2xl">
+      <DialogContent className="w-[90vw] max-w-[800px] h-[80vh] max-h-[600px] p-0 bg-card/95 backdrop-blur-lg border-0 shadow-2xl rounded-xl overflow-hidden">
         <div className="flex h-full">
-          {/* Media Section */}
           {post.media && post.media.length > 0 && (
-            <div className="flex-1 relative bg-black rounded-l-lg">
+            <div className="flex-1 relative bg-black rounded-l-xl">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
+                className="absolute top-2 right-2 z-10 text-white hover:bg-white/20"
               >
                 <X className="w-4 h-4" />
               </Button>
               
-              <div className="relative h-full min-h-[400px]">
+              <div 
+                className="relative h-full flex items-center justify-center"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 {post.media[currentMediaIndex].type === 'image' ? (
                   <img
                     src={normalizeUrl(post.media[currentMediaIndex].url)}
                     alt="Post media"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain max-w-[90%] max-h-[90%] rounded-lg"
                   />
                 ) : (
                   <video
                     src={normalizeUrl(post.media[currentMediaIndex].url)}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain max-w-[90%] max-h-[90%] rounded-lg"
                     controls
                   />
                 )}
 
-                {/* Media Navigation */}
                 {post.media.length > 1 && (
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                    {post.media.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentMediaIndex(index)}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          index === currentMediaIndex ? 'bg-white' : 'bg-white/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1/2 left-2 transform -translate-y-1/2 text-white hover:bg-white/20 rounded-full"
+                      onClick={() => setCurrentMediaIndex((prev) => (prev - 1 + post.media.length) % post.media.length)}
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1/2 right-2 transform -translate-y-1/2 text-white hover:bg-white/20 rounded-full"
+                      onClick={() => setCurrentMediaIndex((prev) => (prev + 1) % post.media.length)}
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                      {post.media.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentMediaIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                            index === currentMediaIndex ? 'bg-white scale-125' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
           )}
 
-          {/* Content Section */}
-          <div className="flex-1 flex flex-col min-w-[400px]">
-            <DialogHeader className="p-6 border-b border-border">
-              <div className="flex items-center space-x-3">
+          <div className="flex-1 flex flex-col min-w-[280px]">
+            <DialogHeader className="p-4 border-b border-border">
+              <div className="flex items-center space-x-2">
                 <Avatar 
-                  className="w-12 h-12 ring-2 ring-primary/20 cursor-pointer"
+                  className="w-10 h-10 ring-2 ring-primary/20 cursor-pointer"
                   onClick={() => onNavigateToProfile(post.author.id)}
                 >
-                  <AvatarImage src={normalizeUrl(post.author.profilePhoto.url)} />
-                  <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                    {post.author.first_name[0]}{post.author.second_name[0]}
+                  <AvatarImage src={post.author.profilePhoto?.url ? normalizeUrl(post.author.profilePhoto.url) : undefined} />
+                  <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
+                    {post.author.first_name[0]}{post.author.second_name?.[0] || ''}
                   </AvatarFallback>
                 </Avatar>
                 <div 
                   className="cursor-pointer"
                   onClick={() => onNavigateToProfile(post.author.id)}
                 >
-                  <DialogTitle className="text-lg hover:text-primary transition-colors">
+                  <DialogTitle className="text-base hover:text-primary transition-colors">
                     {post.author.first_name} {post.author.second_name}
                   </DialogTitle>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     @{post.author.username} • {formatDistanceToNow(new Date(post.createdAt))} ago
                   </p>
                 </div>
               </div>
             </DialogHeader>
 
-            {/* Post Content */}
-            <div className="p-6 border-b border-border">
-              <p className="text-foreground leading-relaxed">{post.content}</p>
+            <div className="p-4 border-b border-border">
+              <p className="text-foreground text-sm leading-relaxed">{post.content}</p>
             </div>
 
-            {/* Post Actions */}
-            <div className="px-6 py-4 border-b border-border">
-              <div className="flex items-center space-x-6">
+            <div className="px-4 py-3 border-b border-border">
+              <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -251,53 +292,52 @@ const PostModal: React.FC<PostModalProps> = ({
                       : 'text-muted-foreground hover:text-red-500'
                   }`}
                 >
-                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                  <span className="ml-2">{post.likes?.length || 0} likes</span>
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                  <span className="ml-1 text-xs">{post.likes?.length || 0} likes</span>
                 </Button>
 
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <MessageCircle className="w-5 h-5" />
-                  <span>{comments.length} comments</span>
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <MessageCircle className="w-4 h-4" />
+                  <span className="text-xs">{comments.length} comments</span>
                 </div>
 
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <Eye className="w-5 h-5" />
-                  <span>{post.views || 0} views</span>
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <Eye className="w-4 h-4" />
+                  <span className="text-xs">{post.views || 0} views</span>
                 </div>
               </div>
             </div>
 
-            {/* Comments Section */}
-            <ScrollArea className="flex-1 p-6">
+            <ScrollArea className="flex-1 p-4 max-h-[calc(80vh-220px)]">
               {isLoadingComments ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 </div>
               ) : comments.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="flex items-start space-x-3">
+                    <div key={comment.id} className="flex items-start space-x-2">
                       <Avatar 
-                        className="w-8 h-8 cursor-pointer"
-                        onClick={() => onNavigateToProfile(comment.user.id)}
+                        className="w-7 h-7 cursor-pointer"
+                        onClick={() => onNavigateToProfile(comment.author.id)}
                       >
-                        <AvatarImage src={comment.user.profilePhoto ? normalizeUrl(comment.user.profilePhoto.url) : undefined} />
+                        <AvatarImage src={comment.author.profilePhoto?.url ? normalizeUrl(comment.author.profilePhoto.url) : undefined} />
                         <AvatarFallback className="text-xs">
-                          {comment.user.first_name[0]}
+                          {comment.author.first_name[0]}{comment.author.second_name?.[0] || ''}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <div className="bg-muted rounded-lg p-3">
+                        <div className="bg-muted rounded-lg p-2">
                           <p 
-                            className="font-medium text-sm cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => onNavigateToProfile(comment.user.id)}
+                            className="font-medium text-xs cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => onNavigateToProfile(comment.author.id)}
                           >
-                            {comment.user.first_name}
+                            {comment.author.first_name} {comment.author.second_name || ''}
                           </p>
-                          <p className="text-sm text-foreground mt-1">{comment.text}</p>
+                          <p className="text-xs text-foreground mt-1">{comment.text}</p>
                         </div>
                         {comment.createdAt && (
-                          <p className="text-xs text-muted-foreground mt-1 ml-3">
+                          <p className="text-xs text-muted-foreground mt-1 ml-2">
                             {formatDistanceToNow(new Date(comment.createdAt))} ago
                           </p>
                         )}
@@ -306,20 +346,19 @@ const PostModal: React.FC<PostModalProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
+                <div className="text-center py-6">
+                  <MessageCircle className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">No comments yet. Be the first to comment!</p>
                 </div>
               )}
             </ScrollArea>
 
-            {/* Comment Input */}
-            <div className="p-6 border-t border-border">
-              <div className="flex items-center space-x-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={user?.profilePhoto ? normalizeUrl(user.profilePhoto.url) : undefined} />
+            <div className="p-4 border-t border-border bg-card sticky bottom-0">
+              <div className="flex items-center space-x-2">
+                <Avatar className="w-7 h-7">
+                  <AvatarImage src={user?.profilePhoto?.url ? normalizeUrl(user.profilePhoto.url) : undefined} />
                   <AvatarFallback className="text-xs">
-                    {user?.first_name?.[0]}
+                    {user?.first_name?.[0]}{user?.second_name?.[0] || ''}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 flex space-x-2">
@@ -328,7 +367,7 @@ const PostModal: React.FC<PostModalProps> = ({
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Write a comment..."
                     onKeyPress={(e) => e.key === 'Enter' && handlePostComment()}
-                    className="flex-1"
+                    className="flex-1 text-sm"
                   />
                   <Button
                     onClick={handlePostComment}

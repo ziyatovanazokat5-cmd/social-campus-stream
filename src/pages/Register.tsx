@@ -39,7 +39,7 @@ const Register = () => {
         formDataToSend.append('profilePhoto', profilePhoto);
       }
 
-      const response = await fetch('/api/users/register', {
+      const response = await fetch('http://localhost:9000/users/register', {
         method: 'POST',
         body: formDataToSend,
       });
@@ -48,9 +48,9 @@ const Register = () => {
 
       if (data.success) {
         // Fetch user profile
-        const profileResponse = await fetch('/api/users/profile', {
+        const profileResponse = await fetch('http://localhost:9000/users/profile', {
           headers: {
-            'Authorization': `Bearer ${data.data.access_token}`,
+            'Authorization': `${data.data.access_token}`,
           },
         });
         const profileData = await profileResponse.json();

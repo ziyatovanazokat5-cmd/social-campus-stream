@@ -1,21 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, MessageCircle, Eye, MoreVertical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface Post {
   id: number;
   author: {
-    id: number;
+    id: string;
     first_name: string;
     second_name: string;
     username: string;
-    profilePhoto: { url: string };
+    profilePhoto?: { url: string };
   };
   content: string;
-  media: Array<{
+  media?: Array<{
     type: 'image' | 'video';
     url: string;
   }>;
@@ -23,8 +25,8 @@ interface Post {
   comments: Array<{
     id: number;
     text: string;
-    user: {
-      id: number;
+    author: {
+      id: string;
       username: string;
       first_name: string;
     };
@@ -40,7 +42,7 @@ interface PostCardProps {
   onLike: (postId: number) => void;
   onComment: (postId: number) => void;
   onOpenPost: (postId: number) => void;
-  onNavigateToProfile?: (userId: number) => void;
+  onNavigateToProfile?: (userId: string) => void;
 }
 
 const PostCard: React.FC<PostCardProps> = ({ 
@@ -53,6 +55,7 @@ const PostCard: React.FC<PostCardProps> = ({
   onNavigateToProfile 
 }) => {
   const [imageError, setImageError] = useState<{[key: string]: boolean}>({});
+  const navigate = useNavigate();
   
   const isLiked = likedPostIds.includes(post.id);
   const normalizeUrl = (url: string) => {
@@ -66,6 +69,14 @@ const PostCard: React.FC<PostCardProps> = ({
     setImageError(prev => ({ ...prev, [url]: true }));
   };
 
+  const handleProfileClick = () => {
+    if (post.author.id === currentUserId) {
+      navigate('/profile');
+    } else {
+      onNavigateToProfile?.(post.author.id);
+    }
+  };
+
   return (
     <Card className="shadow-card border-0 bg-card/80 backdrop-blur-sm hover:shadow-elegant transition-all duration-300 animate-fade-in">
       <CardContent className="p-6 space-y-4">
@@ -73,13 +84,15 @@ const PostCard: React.FC<PostCardProps> = ({
         <div className="flex items-center justify-between">
           <div 
             className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => onNavigateToProfile?.(post.author.id)}
+            onClick={handleProfileClick}
           >
             <Avatar className="w-12 h-12 ring-2 ring-primary/20">
-              <AvatarImage 
-                src={normalizeUrl(post.author.profilePhoto.url)} 
-                alt={post.author.username}
-              />
+              {post.author.profilePhoto?.url ? (
+                <AvatarImage 
+                  src={normalizeUrl(post.author.profilePhoto.url)} 
+                  alt={post.author.username}
+                />
+              ) : null}
               <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
                 {post.author.first_name[0]}{post.author.second_name[0]}
               </AvatarFallback>
@@ -103,7 +116,7 @@ const PostCard: React.FC<PostCardProps> = ({
           <p className="text-foreground leading-relaxed">{post.content}</p>
 
           {/* Media */}
-          {post.media && post.media.length > 0 && (
+          {post.media?.length ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {post.media.map((media, index) => (
                 <div key={index} className="relative rounded-lg overflow-hidden">
@@ -128,7 +141,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Comments Preview */}
@@ -138,7 +151,7 @@ const PostCard: React.FC<PostCardProps> = ({
             {post.comments.slice(0, 3).map((comment) => (
               <div key={comment.id} className="flex items-start space-x-2">
                 <span className="text-sm font-medium text-primary">
-                  {comment.user.first_name}:
+                  {comment.author.first_name}:
                 </span>
                 <span className="text-sm text-foreground">{comment.text}</span>
               </div>

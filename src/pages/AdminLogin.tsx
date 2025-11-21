@@ -8,10 +8,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 
-const Login = () => {
+const AdminLogin = () => {
   const [formData, setFormData] = useState({
     username: '',
-    password: ''
+    password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,7 +22,8 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:9000/users/login', {
+      console.log('Submitting login request:', formData);
+      const response = await fetch('http://localhost:9000/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,36 +32,36 @@ const Login = () => {
       });
 
       const data = await response.json();
+      console.log('Login API response:', data);
 
       if (data.success) {
-        // Fetch user profile
-        const profileResponse = await fetch('http://localhost:9000/users/profile', {
+        const profileResponse = await fetch('http://localhost:9000/admin/profile', {
           headers: {
             'Authorization': `${data.data.access_token}`,
           },
         });
         const profileData = await profileResponse.json();
+        console.log('Profile API response:', profileData);
 
         if (profileData.success) {
-          login(data.data.access_token, profileData.data);
+          login(data.data.access_token, { ...profileData.data, role: 'admin' });
           toast({
-            title: "Welcome back!",
-            description: "Successfully logged in to Campus Stream.",
+            title: 'Welcome back, Admin!',
+            description: 'Successfully logged in to Admin Dashboard.',
           });
-          navigate('/home');
+          navigate('/admin');
+        } else {
+          throw new Error(profileData.message || 'Failed to fetch admin profile');
         }
       } else {
-        toast({
-          title: "Login failed",
-          description: data.message || "Invalid credentials. Please try again.",
-          variant: "destructive",
-        });
+        throw new Error(data.message || 'Invalid admin credentials');
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: "Connection error",
-        description: "Unable to connect to server. Please try again.",
-        variant: "destructive",
+        title: 'Login failed',
+        description: error.message || 'Unable to connect to server. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -70,7 +71,7 @@ const Login = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -81,25 +82,24 @@ const Login = () => {
           <div className="w-16 h-16 bg-gradient-primary rounded-xl flex items-center justify-center mx-auto">
             <LogIn className="w-8 h-8 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-          <p className="text-muted-foreground">Sign in to your Campus Stream account</p>
+          <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
+          <p className="text-muted-foreground">Sign in to your Admin Dashboard</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Admin Username</Label>
               <Input
                 id="username"
                 name="username"
                 type="text"
-                placeholder="Enter your username"
+                placeholder="Enter your admin username"
                 value={formData.username}
                 onChange={handleChange}
                 required
                 className="transition-all duration-300 focus:shadow-md"
               />
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -113,13 +113,7 @@ const Login = () => {
                 className="transition-all duration-300 focus:shadow-md"
               />
             </div>
-
-            <Button 
-              type="submit" 
-              variant="hero" 
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" variant="hero" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -128,19 +122,18 @@ const Login = () => {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  Sign In
+                  Admin Sign In
                 </>
               )}
             </Button>
-
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link 
-                  to="/register" 
+                Not an admin?{' '}
+                <Link
+                  to="/login"
                   className="text-primary hover:text-primary/80 font-medium transition-colors"
                 >
-                  Join Campus Stream
+                  Go to User Login
                 </Link>
               </p>
             </div>
@@ -151,4 +144,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default AdminLogin;
