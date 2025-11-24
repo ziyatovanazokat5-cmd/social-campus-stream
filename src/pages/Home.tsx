@@ -75,8 +75,8 @@ const Home = () => {
     try {
       const headers = { Authorization: `${token}`, 'Content-Type': 'application/json' };
       const [postsRes, newsRes] = await Promise.all([
-        fetch('http://localhost:9000/posts', { headers }),
-        fetch('http://localhost:9000/news', { headers }),
+        fetch('https://social.polito.uz/api/posts', { headers }),
+        fetch('https://social.polito.uz/api/news', { headers }),
       ]);
 
       const postsData = await postsRes.json();
@@ -94,7 +94,7 @@ const Home = () => {
 
   const fetchNewsById = async (id: number) => {
     try {
-      const res = await fetch(`http://localhost:9000/news/${id}`, {
+      const res = await fetch(`https://social.polito.uz/api/news/${id}`, {
         headers: { Authorization: `${token}` },
       });
       const data = await res.json();
@@ -144,7 +144,7 @@ const Home = () => {
     selectedMedia.forEach((file) => formData.append('media', file));
 
     try {
-      const res = await fetch('http://localhost:9000/posts', {
+      const res = await fetch('https://social.polito.uz/api/posts', {
         method: 'POST',
         headers: { Authorization: `${token}` },
         body: formData,
@@ -209,14 +209,14 @@ const Home = () => {
     try {
       let data;
       if (isLiked && userLike?.id) {
-        const res = await fetch(`http://localhost:9000/likes/${userLike.id}/${postId}`, {
+        const res = await fetch(`https://social.polito.uz/api/likes/${userLike.id}/${postId}`, {
           method: 'DELETE',
           headers: { Authorization: `${token}` },
         });
         data = await res.json();
         if (!data.success) throw new Error(data.message || 'Failed to unlike');
       } else {
-        const res = await fetch(`http://localhost:9000/likes/${postId}`, {
+        const res = await fetch(`https://social.polito.uz/api/likes/${postId}`, {
           method: 'POST',
           headers: { Authorization: `${token}` },
         });

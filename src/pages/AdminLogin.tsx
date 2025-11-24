@@ -23,7 +23,7 @@ const AdminLogin = () => {
 
     try {
       console.log('Submitting login request:', formData);
-      const response = await fetch('http://localhost:9000/admin/login', {
+      const response = await fetch('https://social.polito.uz/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ const AdminLogin = () => {
       console.log('Login API response:', data);
 
       if (data.success) {
-        const profileResponse = await fetch('http://localhost:9000/admin/profile', {
+        const profileResponse = await fetch('https://social.polito.uz/api/admin/profile', {
           headers: {
             'Authorization': `${data.data.access_token}`,
           },

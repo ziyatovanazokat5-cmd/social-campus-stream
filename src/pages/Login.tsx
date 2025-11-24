@@ -22,7 +22,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:9000/users/login', {
+      const response = await fetch('https://social.polito.uz/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ const Login = () => {
 
       if (data.success) {
         // Fetch user profile
-        const profileResponse = await fetch('http://localhost:9000/users/profile', {
+        const profileResponse = await fetch('https://social.polito.uz/api/users/profile', {
           headers: {
             'Authorization': `${data.data.access_token}`,
           },

@@ -109,15 +109,15 @@ const Account: React.FC = () => {
 
   const normalizeUrl = (url: string) => {
     if (url.startsWith("./")) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith("http") ? url : `http://localhost:9000/${url}`;
+    return url.startsWith("https") ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const fetchUserData = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:9000/users/one/${id}`, {
+      const response = await fetch(`https://social.polito.uz/api/users/one/${id}`, {
         headers: {
           Authorization: `${token}`,
         },
@@ -172,7 +172,7 @@ const Account: React.FC = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:9000/subscriptions/${user.id}/${accountUser.id}`,
+        `https://social.polito.uz/api/subscriptions/${user.id}/${accountUser.id}`,
         {
           method: "POST",
           headers: {
@@ -218,7 +218,7 @@ const Account: React.FC = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:9000/subscriptions/${user.id}/${accountUser.id}`,
+        `https://social.polito.uz/api/subscriptions/${user.id}/${accountUser.id}`,
         {
           method: "DELETE",
           headers: {
@@ -264,7 +264,7 @@ const Account: React.FC = () => {
     try {
       // Fetch existing chats to check if one already exists
       const chatsResponse = await fetch(
-        `http://localhost:9000/chats/user/${user.id}`,
+        `https://social.polito.uz/api/chats/user/${user.id}`,
         {
           headers: { Authorization: `${token}` },
         }
@@ -284,7 +284,7 @@ const Account: React.FC = () => {
         navigate(`/chat`);
       } else {
         // Create a new chat
-        const createChatResponse = await fetch(`http://localhost:9000/chats`, {
+        const createChatResponse = await fetch(`https://social.polito.uz/api/chats`, {
           method: "POST",
           headers: {
             Authorization: `${token}`,
@@ -327,7 +327,7 @@ const Account: React.FC = () => {
 
         if (userLike) {
           const response = await fetch(
-            `http://localhost:9000/likes/${userLike.id}/${postId}`,
+            `https://social.polito.uz/api/likes/${userLike.id}/${postId}`,
             {
               method: "DELETE",
               headers: {
@@ -351,7 +351,7 @@ const Account: React.FC = () => {
           setLikedPostIds((prev) => [...prev, postId]);
         }
       } else {
-        const response = await fetch(`http://localhost:9000/likes/${postId}`, {
+        const response = await fetch(`https://social.polito.uz/api/likes/${postId}`, {
           method: "POST",
           headers: {
             Authorization: `${token}`,

@@ -53,7 +53,7 @@ const AdminAnonymous = () => {
     else setIsRefreshing(true);
 
     try {
-      const response = await fetch('http://localhost:9000/anonymous', {
+      const response = await fetch('https://social.polito.uz/api/anonymous', {
         headers: {
           Authorization: `${token}`,
         },
@@ -85,7 +85,7 @@ const AdminAnonymous = () => {
     if (!confirm('Are you sure you want to delete this anonymous message?')) return;
 
     try {
-      const response = await fetch(`http://localhost:9000/anonymous/${messageId}`, {
+      const response = await fetch(`https://social.polito.uz/api/anonymous/${messageId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `${token}`,
@@ -128,9 +128,9 @@ const AdminAnonymous = () => {
   const normalizeUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   if (isLoading) {

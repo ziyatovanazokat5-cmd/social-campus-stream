@@ -21,14 +21,14 @@ const Activities = () => {
 
   const normalizeUrl = (url: string) => {
     if (url?.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url?.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url?.startsWith('https') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch('http://localhost:9000/activities', {
+      const response = await fetch('https://social.polito.uz/api/activities', {
         headers: {
           'Authorization': `${token}`,
         },
@@ -65,7 +65,7 @@ const Activities = () => {
     setRegistering(prev => ({ ...prev, [activityId]: true }));
     
     try {
-      const response = await fetch(`http://localhost:9000/activities/${activityId}/register`, {
+      const response = await fetch(`https://social.polito.uz/api/activities/${activityId}/register`, {
         method: 'POST',
         headers: {
           'Authorization': `${token}`,
@@ -130,7 +130,7 @@ const Activities = () => {
                 {activity.photos && activity.photos.length > 0 && (
                   <div className="relative h-48 overflow-hidden rounded-t-lg">
                     <img
-                      src={`http://localhost:9000/uploads/activities/${activity.photos[0]}`}
+                      src={`https://social.polito.uz/api/uploads/activities/${activity.photos[0]}`}
                       alt={activity.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {

@@ -29,14 +29,14 @@ const UserSearch = () => {
   const normalizeUrl = (url?: string) => {
     if (!url) return undefined;
     if (url.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:9000/users', {
+      const response = await fetch('https://social.polito.uz/api/users', {
         headers: {
           'Authorization': `${token}`,
         },

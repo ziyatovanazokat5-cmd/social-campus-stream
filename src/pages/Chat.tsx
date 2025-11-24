@@ -50,8 +50,8 @@ const Chat = () => {
 
   const normalizeUrl = (url?: string) => {
     if (!url) return '';
-    if (url.startsWith('./')) return `http://localhost:9000/${url.slice(2)}`;
-    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    if (url.startsWith('./')) return `https://social.polito.uz/api/${url.slice(2)}`;
+    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   // Fetch chats with deduplication
@@ -59,7 +59,7 @@ const Chat = () => {
     if (!token || !user?.id) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:9000/chats/user/${user.id}`, {
+      const response = await fetch(`https://social.polito.uz/api/chats/user/${user.id}`, {
         headers: { Authorization: `${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch chats');
@@ -77,7 +77,7 @@ const Chat = () => {
   const fetchMessages = async (chatId: number) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:9000/messages/chat/${chatId}`, {
+      const res = await fetch(`https://social.polito.uz/api/messages/chat/${chatId}`, {
         headers: { Authorization: `${token}` },
       });
       if (!res.ok) throw new Error();
@@ -85,7 +85,7 @@ const Chat = () => {
       setMessages(data.map((m: any) => ({ ...m, sentAt: new Date(m.sentAt) })));
 
       // Mark as read
-      await fetch('http://localhost:9000/messages/read', {
+      await fetch('https://social.polito.uz/api/messages/read', {
         method: 'POST',
         headers: { Authorization: `${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId, userId: user?.id }),
@@ -101,7 +101,7 @@ const Chat = () => {
 
     fetchChats();
 
-    socketRef.current = io('http://localhost:9000', {
+    socketRef.current = io('https://social.polito.uz/api', {
       auth: { token },
       withCredentials: true,
     });

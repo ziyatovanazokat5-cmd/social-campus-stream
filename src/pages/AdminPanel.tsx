@@ -75,9 +75,9 @@ const AdminPanel = () => {
   const normalizeUrl = (url?: string) => {
     if (!url) return undefined;
     if (url.startsWith("./")) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith("http") ? url : `http://localhost:9000/${url}`;
+    return url.startsWith("https") ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const handleImageError = (url: string) => {
@@ -88,13 +88,13 @@ const AdminPanel = () => {
     setIsLoading(true);
     try {
       const [adminsRes, usersRes, newsRes] = await Promise.all([
-        fetch("http://localhost:9000/admin", {
+        fetch("https://social.polito.uz/api/admin", {
           headers: { Authorization: `${token}` },
         }),
-        fetch("http://localhost:9000/users", {
+        fetch("https://social.polito.uz/api/users", {
           headers: { Authorization: `${token}` },
         }),
-        fetch("http://localhost:9000/news", {
+        fetch("https://social.polito.uz/api/news", {
           headers: { Authorization: `${token}` },
         }),
       ]);
@@ -143,7 +143,7 @@ const AdminPanel = () => {
         });
       }
 
-      const response = await fetch("http://localhost:9000/news", {
+      const response = await fetch("https://social.polito.uz/api/news", {
         method: "POST",
         headers: {
           Authorization: `${token}`,
@@ -184,7 +184,7 @@ const AdminPanel = () => {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
     try {
-      const response = await fetch(`http://localhost:9000/users/${userId}`, {
+      const response = await fetch(`https://social.polito.uz/api/users/${userId}`, {
         method: "DELETE",
         headers: {
           Authorization: `${token}`,
@@ -218,7 +218,7 @@ const AdminPanel = () => {
     if (!confirm("Are you sure you want to delete this news article?")) return;
 
     try {
-      const response = await fetch(`http://localhost:9000/news/${newsId}`, {
+      const response = await fetch(`https://social.polito.uz/api/news/${newsId}`, {
         method: "DELETE",
         headers: {
           Authorization: `${token}`,
@@ -487,7 +487,7 @@ const AdminPanel = () => {
                                 {media.type === "image" &&
                                 !imageError[media.url] ? (
                                   <img
-                                    src={`http://localhost:9000/uploads/news-media/${media.url}`}
+                                    src={`https://social.polito.uz/api/uploads/news-media/${media.url}`}
                                     alt="News media"
                                     className="w-full h-24 object-cover hover:scale-105 transition-transform duration-300"
                                     onError={() => handleImageError(media.url)}

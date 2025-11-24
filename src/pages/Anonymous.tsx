@@ -60,7 +60,7 @@ const Anonymous = () => {
     else setIsRefreshing(true);
 
     try {
-      const response = await fetch('http://localhost:9000/anonymous', {
+      const response = await fetch('https://social.polito.uz/api/anonymous', {
         headers: {
           Authorization: `${token}`,
         },
@@ -90,7 +90,7 @@ const Anonymous = () => {
 
   const fetchSingleMessage = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:9000/anonymous/${id}`, {
+      const response = await fetch(`https://social.polito.uz/api/anonymous/${id}`, {
         headers: {
           Authorization: `${token}`,
         },
@@ -128,9 +128,9 @@ const Anonymous = () => {
   const normalizeUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +154,7 @@ const Anonymous = () => {
         formData.append('media', file);
       });
 
-      const response = await fetch('http://localhost:9000/anonymous', {
+      const response = await fetch('https://social.polito.uz/api/anonymous', {
         method: 'POST',
         headers: {
           Authorization: `${token}`,
@@ -199,7 +199,7 @@ const Anonymous = () => {
 
     setIsPostingComment(true);
     try {
-      const response = await fetch(`http://localhost:9000/anonym-comments/${selectedMessage.id}`, {
+      const response = await fetch(`https://social.polito.uz/api/anonym-comments/${selectedMessage.id}`, {
         method: 'POST',
         headers: {
           Authorization: `${token}`,

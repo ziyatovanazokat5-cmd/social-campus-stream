@@ -81,15 +81,15 @@ const Profile = () => {
   const normalizeUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const fetchProfile = async (userId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:9000/users/one/${userId}`, {
+      const response = await fetch(`https://social.polito.uz/api/users/one/${userId}`, {
         headers: {
           'Authorization': `${token}`,
         },
@@ -123,7 +123,7 @@ const Profile = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:9000/users/update', {
+      const response = await fetch('https://social.polito.uz/api/users/update', {
         method: 'PATCH',
         headers: {
           'Authorization': `${token}`,
@@ -135,7 +135,7 @@ const Profile = () => {
       const data = await response.json();
       if (data.success) {
         // Fetch updated profile
-        const profileResponse = await fetch('http://localhost:9000/users/profile', {
+        const profileResponse = await fetch('https://social.polito.uz/api/users/profile', {
           headers: {
             'Authorization': `${token}`,
           },
@@ -197,7 +197,7 @@ const Profile = () => {
         setLikedPostIds(prev => [...prev, postId]);
       }
 
-      const response = await fetch(`http://localhost:9000/posts/${postId}/like`, {
+      const response = await fetch(`https://social.polito.uz/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `${token}`,
