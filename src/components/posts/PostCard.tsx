@@ -60,9 +60,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const isLiked = likedPostIds.includes(post.id);
   const normalizeUrl = (url: string) => {
     if (url.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const handleImageError = (url: string) => {

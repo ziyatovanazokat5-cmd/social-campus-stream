@@ -70,15 +70,15 @@ const PostModal: React.FC<PostModalProps> = ({
 
   const normalizeUrl = (url: string) => {
     if (url?.startsWith('./')) {
-      return `http://localhost:9000/${url.slice(2)}`;
+      return `https://social.polito.uz/api/${url.slice(2)}`;
     }
-    return url?.startsWith('http') ? url : `http://localhost:9000/${url}`;
+    return url?.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
   };
 
   const fetchComments = async (postId: number) => {
     setIsLoadingComments(true);
     try {
-      const response = await fetch(`http://localhost:9000/posts/${postId}`, {
+      const response = await fetch(`https://social.polito.uz/api/posts/${postId}`, {
         headers: {
           'Authorization': `${token}`,
         },
@@ -100,7 +100,7 @@ const PostModal: React.FC<PostModalProps> = ({
 
     setIsPosting(true);
     try {
-      const response = await fetch(`http://localhost:9000/comments/${post.id}`, {
+      const response = await fetch(`https://social.polito.uz/api/comments/${post.id}`, {
         method: 'POST',
         headers: {
           'Authorization': `${token}`,
