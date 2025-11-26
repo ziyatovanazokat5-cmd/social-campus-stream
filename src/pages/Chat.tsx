@@ -1,13 +1,21 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
-import { MessageCircle, Send, Loader2, Search, Check, CheckCheck, ArrowLeft } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
+import React, { useState, useEffect, useRef } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import {
+  MessageCircle,
+  Send,
+  Loader2,
+  Search,
+  Check,
+  CheckCheck,
+  ArrowLeft,
+} from "lucide-react";
+import { io, Socket } from "socket.io-client";
 
 interface User {
   id: string;
@@ -41,17 +49,18 @@ const Chat = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const normalizeUrl = (url?: string) => {
-    if (!url) return '';
-    if (url.startsWith('./')) return `https://social.polito.uz/api/${url.slice(2)}`;
-    return url.startsWith('http') ? url : `https://social.polito.uz/api/${url}`;
+    if (!url) return "";
+    if (url.startsWith("./"))
+      return `https://social.polito.uz/api/${url.slice(2)}`;
+    return url.startsWith("http") ? url : `https://social.polito.uz/api/${url}`;
   };
 
   // Fetch chats with deduplication
@@ -59,16 +68,23 @@ const Chat = () => {
     if (!token || !user?.id) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`https://social.polito.uz/api/chats/user/${user.id}`, {
-        headers: { Authorization: `${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to fetch chats');
+      const response = await fetch(
+        `https://social.polito.uz/api/chats/user/${user.id}`,
+        {
+          headers: { Authorization: `${token}` },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch chats");
       const data: Chat[] = await response.json();
       const unique = new Map<number, Chat>();
       data.forEach((c) => !unique.has(c.id) && unique.set(c.id, c));
       setChats(Array.from(unique.values()));
     } catch {
-      toast({ title: 'Error', description: 'Failed to load chats.', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Failed to load chats.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -77,21 +93,31 @@ const Chat = () => {
   const fetchMessages = async (chatId: number) => {
     if (!token) return;
     try {
-      const res = await fetch(`https://social.polito.uz/api/messages/chat/${chatId}`, {
-        headers: { Authorization: `${token}` },
-      });
+      const res = await fetch(
+        `https://social.polito.uz/api/messages/chat/${chatId}`,
+        {
+          headers: { Authorization: `${token}` },
+        }
+      );
       if (!res.ok) throw new Error();
       const data = await res.json();
       setMessages(data.map((m: any) => ({ ...m, sentAt: new Date(m.sentAt) })));
 
       // Mark as read
-      await fetch('https://social.polito.uz/api/messages/read', {
-        method: 'POST',
-        headers: { Authorization: `${token}`, 'Content-Type': 'application/json' },
+      await fetch("https://social.polito.uz/api/messages/read", {
+        method: "POST",
+        headers: {
+          Authorization: `${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ chatId, userId: user?.id }),
       });
     } catch {
-      toast({ title: 'Error', description: 'Failed to load messages.', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Failed to load messages.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -101,23 +127,32 @@ const Chat = () => {
 
     fetchChats();
 
-    socketRef.current = io('https://social.polito.uz/api', {
+    socketRef.current = io("https://social.polito.uz", {
+      // no /api
+      path: "/socket.io", // important for nginx + NestJS
       auth: { token },
       withCredentials: true,
     });
 
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected');
-      socketRef.current?.emit('register', user.id);
+    socketRef.current.on("connect", () => {
+      console.log("Socket connected");
+      socketRef.current?.emit("register", user.id);
     });
 
-    socketRef.current.on('newMessage', (msg: Message) => {
-      setMessages((prev) => [...prev, { ...msg, sentAt: new Date(msg.sentAt) }]);
+    socketRef.current.on("newMessage", (msg: Message) => {
+      setMessages((prev) => [
+        ...prev,
+        { ...msg, sentAt: new Date(msg.sentAt) },
+      ]);
       if (msg.chat?.id !== selectedChat?.id) fetchChats();
     });
 
-    socketRef.current.on('connect_error', (err) => {
-      toast({ title: 'Connection Error', description: err.message, variant: 'destructive' });
+    socketRef.current.on("connect_error", (err) => {
+      toast({
+        title: "Connection Error",
+        description: err.message,
+        variant: "destructive",
+      });
     });
 
     return () => {
@@ -128,12 +163,12 @@ const Chat = () => {
   useEffect(() => {
     if (selectedChat) {
       fetchMessages(selectedChat.id);
-      socketRef.current?.emit('joinChat', { chatId: selectedChat.id });
+      socketRef.current?.emit("joinChat", { chatId: selectedChat.id });
     }
   }, [selectedChat]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSelectChat = (chat: Chat) => {
@@ -147,27 +182,33 @@ const Chat = () => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || !user?.id) return;
-    const other = selectedChat.participants.find(p => p.user.id !== user.id)?.user;
+    const other = selectedChat.participants.find(
+      (p) => p.user.id !== user.id
+    )?.user;
     if (!other) return;
 
     setIsSending(true);
     try {
-      socketRef.current?.emit('sendMessage', {
+      socketRef.current?.emit("sendMessage", {
         chatId: selectedChat.id,
         senderId: user.id,
         receiverId: other.id,
         content: newMessage,
       });
-      setNewMessage('');
+      setNewMessage("");
     } catch {
-      toast({ title: 'Error', description: 'Failed to send message.', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Failed to send message.",
+        variant: "destructive",
+      });
     } finally {
       setIsSending(false);
     }
   };
 
   const filteredChats = chats.filter((chat) => {
-    const other = chat.participants.find(p => p.user.id !== user?.id)?.user;
+    const other = chat.participants.find((p) => p.user.id !== user?.id)?.user;
     if (!other) return false;
     const q = searchQuery.toLowerCase();
     return (
@@ -177,7 +218,9 @@ const Chat = () => {
     );
   });
 
-  const otherUser = selectedChat?.participants.find(p => p.user.id !== user?.id)?.user;
+  const otherUser = selectedChat?.participants.find(
+    (p) => p.user.id !== user?.id
+  )?.user;
 
   // Mobile: Show chat list OR conversation
   if (isLoading) {
@@ -193,9 +236,12 @@ const Chat = () => {
 
   return (
     <div className="flex h-screen bg-background">
-
       {/* === CHAT LIST (Mobile: full screen | Desktop: 1/3) === */}
-      <div className={`flex flex-col border-r bg-card ${selectedChat ? 'hidden md:flex md:w-1/3' : 'w-full md:w-1/3'}`}>
+      <div
+        className={`flex flex-col border-r bg-card ${
+          selectedChat ? "hidden md:flex md:w-1/3" : "w-full md:w-1/3"
+        }`}
+      >
         <Card className="h-full rounded-none border-0 shadow-none">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -217,7 +263,9 @@ const Chat = () => {
           <CardContent className="flex-1 overflow-y-auto p-0">
             {filteredChats.length > 0 ? (
               filteredChats.map((chat) => {
-                const u = chat.participants.find(p => p.user.id !== user?.id)?.user;
+                const u = chat.participants.find(
+                  (p) => p.user.id !== user?.id
+                )?.user;
                 if (!u) return null;
                 return (
                   <div
@@ -228,27 +276,36 @@ const Chat = () => {
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={normalizeUrl(u.profilePhoto?.url)} />
                       <AvatarFallback className="text-xs">
-                        {u.first_name[0]}{u.second_name[0]}
+                        {u.first_name[0]}
+                        {u.second_name[0]}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">
                         {u.first_name} {u.second_name}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">@{u.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{u.username}
+                      </p>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <p className="text-center text-sm text-muted-foreground mt-6">No chats found</p>
+              <p className="text-center text-sm text-muted-foreground mt-6">
+                No chats found
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
 
       {/* === CONVERSATION VIEW (Mobile: full | Desktop: 2/3) === */}
-      <div className={`flex flex-col ${selectedChat ? 'w-full md:w-2/3' : 'hidden md:flex md:w-2/3'}`}>
+      <div
+        className={`flex flex-col ${
+          selectedChat ? "w-full md:w-2/3" : "hidden md:flex md:w-2/3"
+        }`}
+      >
         {selectedChat ? (
           <>
             {/* Header with back button on mobile */}
@@ -264,14 +321,17 @@ const Chat = () => {
               <Avatar className="h-9 w-9">
                 <AvatarImage src={normalizeUrl(otherUser?.profilePhoto?.url)} />
                 <AvatarFallback className="text-xs">
-                  {otherUser?.first_name[0]}{otherUser?.second_name[0]}
+                  {otherUser?.first_name[0]}
+                  {otherUser?.second_name[0]}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">
                   {otherUser?.first_name} {otherUser?.second_name}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">@{otherUser?.username}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  @{otherUser?.username}
+                </p>
               </div>
             </CardHeader>
 
@@ -280,21 +340,31 @@ const Chat = () => {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.sender.id === user?.id ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    msg.sender.id === user?.id ? "justify-end" : "justify-start"
+                  }`}
                 >
                   <div
                     className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${
                       msg.sender.id === user?.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
                     }`}
                   >
                     <p>{msg.content}</p>
                     <div className="flex items-center justify-end gap-1 mt-1 text-xs opacity-70">
-                      <span>{msg.sentAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      {msg.sender.id === user?.id && (
-                        msg.isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />
-                      )}
+                      <span>
+                        {msg.sentAt.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {msg.sender.id === user?.id &&
+                        (msg.isRead ? (
+                          <CheckCheck className="h-3 w-3" />
+                        ) : (
+                          <Check className="h-3 w-3" />
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -309,7 +379,7 @@ const Chat = () => {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSendMessage();
                   }
@@ -322,7 +392,11 @@ const Chat = () => {
                 size="icon"
                 className="h-10 w-10"
               >
-                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </>
